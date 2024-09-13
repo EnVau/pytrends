@@ -23,4 +23,4 @@ jobs:
 
     - name: Run the script
       run: |
-        python dein_script.py  # Ersetze 'dein_script.py' durch den tatsächlichen Namen deines Skripts
+        python trends.py  
