@@ -1,0 +1,26 @@
+name: Run Python Script Every 3 Hours
+
+on:
+  schedule:
+    - cron: "0 */3 * * *"  # Führt den Workflow alle 3 Stunden aus
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out the repository
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'  # Verwende die gewünschte Python-Version
+
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+
+    - name: Run the script
+      run: |
+        python dein_script.py  # Ersetze 'dein_script.py' mit dem tatsächlichen Namen deines Skripts
