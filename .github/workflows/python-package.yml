@@ -23,6 +23,6 @@ jobs:
 
     - name: Run the script
       run: |
-       python pytrends/trends.py
+       python pytrends/pytrends/trends.py
 
 
