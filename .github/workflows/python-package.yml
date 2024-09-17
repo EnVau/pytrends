@@ -21,8 +21,9 @@ jobs:
       run: |
         pip install -r requirements.txt
 
+    - name: Check working directory
+      run: pwd
+
     - name: Run the script
       run: |
-       python pytrends/pytrends/trends.py
-
-
+        python pytrends/pytrends/trends.py
