@@ -21,9 +21,16 @@ jobs:
       run: |
         pip install -r requirements.txt
 
-    - name: Check working directory
-      run: pwd
+    # Debugging-Schritte hinzufügen
+    - name: Zeige das aktuelle Verzeichnis an
+      run: pwd  # Zeigt das aktuelle Arbeitsverzeichnis
+
+    - name: Liste Dateien im Arbeitsverzeichnis auf
+      run: ls -R  # Listet alle Dateien und Verzeichnisse rekursiv auf
+
+    - name: Liste Dateien im pytrends-Verzeichnis auf
+      run: ls pytrends/pytrends  # Zeigt die Dateien im erwarteten Verzeichnis an
 
     - name: Run the script
       run: |
-        python pytrends/pytrends/trends.py
+        python pytrends/pytrends/trends.py  # Führt das Python-Skript aus
