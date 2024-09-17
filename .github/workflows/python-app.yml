@@ -1,4 +1,4 @@
-nano .github/workflows/python-app.ymname: Python App
+name: Python App
 
 on:
   push:
@@ -29,5 +29,3 @@ jobs:
       - name: Run Python script
         run: |
           python trends.py
-
-
