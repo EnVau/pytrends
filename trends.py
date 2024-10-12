@@ -8,18 +8,15 @@ from pyairtable import Api
 # Pandas-Einstellungen anpassen, um zukünftige Änderungen zuzulassen
 pd.set_option('future.no_silent_downcasting', True)
 
-# Cookies, die von Google Trends übernommen werden sollen
-cookies = {
-    '__utmc': '72944086',
-    '__utma': '72944086.1047843693.1726049423.1726049433.1726152372.2',
-    '__utmz': '72944086.1726152372.2.2.utmcsr=trends.google.de|utmccn=(referral)|utmcmd=referral|utmcct=/',
-    '__utmt': '1',
-    '__utmb': '72944086.2.10.1726152372',
-    'CONSENT': 'YES+DE.de+20151018-17-1',
-    'SEARCH_SAMESITE': 'CgQIrpsB',
-    '__Secure-ENID': '20.SE=F4-dyh5HA4JUmS0I8YlFfGxCJ_S4wTR-n9Y_0qJx2QhwASV1QcsUJKoHUTf4lhOmaX4U8LDT5Cp7VX_sTetdcVAjLCZ7cpoTA2zRnWiw6DuYip7yI0CmAT-xq1yMU2rQkT7VuDX6dzdllBP6XgSPtS5U_iCW_YXvnVmhrPGxAU-WD7_zIXtnYDkx8PhwMu06Rts0uJ-CtE-2oz9IoR1qJFOz9YPxCzW-YQjaTdtzygffbgL2VCSELi7TzpeYK-s9hWCJXOA',
-    'NID': '516=dSxKb1SQIOmzBksra2bo1C5UARQA485J9d0eEZZ9n44_PbbO1XPOTVoxnEsncLFD7S9Fio2XpxLt3FIy458Ly3xa0iuKiqbQr_ey9N5s-G2FUdr7q5DNEx2pKwsgb24OLUGOuONC9xv4pysFv7b2_LItbb94N2Xis80G7JF7DM1tnD4sz6ECHIPHlIS9YZD34PtxZxpBV5K0yByIipwZb5iEAcC1FpIsLmvyMGfcP3rfE8HJc3LB-5TJFvhms9-7UK0qe3xFH0MBGyufSiarPXit39Zf_uEDCGdRj9sfX8KR5_W2SI1RbJQPRgkToFVUDr4ZTM5RV1wLvEbzi6kkI2r3XbuPKu-IvUJYG7b3RGvN6SLyatn_bzfqFHLaZjkhMpF1ezUFe85K4QkmrXE1v6v-UIl2Hc7QhKXXLdPhZ_cQjsouRWnYNgFeo7H2DAKrWYQ6-T8KUEaytjeZi75XS8X9_U-D-yNEDLZ_jvWbTUYhbjwZbRcJgL_BuRSlsNaOPpRDTOlfrfxDSPQLA7DbzDja_cSu_4_8cOJg6Vjtqs29R8-PcSLRnjvDhMh0rX6_PNtSmfrGq1Ef2eu3fIcJZ8guldc3WNn4v3WFrHLxfR_Y3nZimSPKyfZvcjy8TLBomQpJoXRmuiVvFhWax9ONlFJB_LBdgzT7DBoQul2r24F7rTekaRM5umU0e9JYiuAYD2RtAnKGEZCsjf2LXoQERfd7KAFN89A89GHELPP370Tvtu3qVA',
-}
+# Verbindung zur Google Trends API mit den angegebenen Headern und Cookies
+class CustomTrendReq(TrendReq):
+    def __init__(self, *args, headers=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.headers = headers or {}  # Wenn keine headers übergeben werden, wird ein leeres Dict verwendet
+
+    def _get_data(self, url, method="get", trim_chars=0, **kwargs):
+        kwargs['headers'] = self.headers  # Verwende die Instanzvariable self.headers
+        return super()._get_data(url, method=method, trim_chars=trim_chars, **kwargs)
 
 # Header, die von Google Trends verwendet werden
 headers = {
@@ -46,13 +43,8 @@ headers = {
     'x-client-data': 'CKq1yQEIjbbJAQiitskBCKmdygEIv+jKAQiTocsBCJr+zAEIhaDNAQjCrM4BCNaszgEI5K/OAQjCts4BCLy5zgEI2L3OAQjNv84BGPbJzQEYnbHOAQ==',
 }
 
-# Verbindung zur Google Trends API mit den angegebenen Headern und Cookies
-class CustomTrendReq(TrendReq):
-    def _get_data(self, url, method="get", trim_chars=0, **kwargs):
-        kwargs['headers'] = headers  # Hier sicherstellen, dass headers ein dict ist
-        return super()._get_data(url, method=method, trim_chars=trim_chars, **kwargs)
-
-pytrends = CustomTrendReq(hl='de-DE', tz=360)
+# Initialisiere die pytrends Verbindung mit den angepassten Headern
+pytrends = CustomTrendReq(hl='de-DE', tz=360, headers=headers)
 
 # Verbindung zu Airtable
 AIRTABLE_API_TOKEN = "patCjfpIVYTl6d7NW.fc8e818a0e6507a79470d12a56d1051ad904f8e299eaef79c21d8bea5501752b"
@@ -87,22 +79,25 @@ def get_interest_over_time(keyword, retries=5, backoff_factor=60):
                 break
     return None  # Falls alle Versuche fehlschlagen
 
-# Funktion zum Hinzufügen von Daten in Airtable
-def add_to_airtable(record_data):
+# Funktion zum Batch-Hinzufügen von Daten in Airtable
+def batch_add_to_airtable(records):
     try:
-        if "Suchvolumen" in record_data and record_data["Suchvolumen"] is not None:
-            record_data["Suchvolumen"] = float(record_data["Suchvolumen"])
-
-        response = table.create(record_data)
-        print(f"Erfolgreich Daten hinzugefügt: {record_data}")
+        if records:
+            response = table.batch_create(records)
+            print(f"Erfolgreich {len(records)} Datensätze hinzugefügt.")
+        else:
+            print("Keine Daten zum Hinzufügen vorhanden.")
     except Exception as e:
         print(f"Fehler beim Hinzufügen von Daten: {e}")
 
-# Funktion zum Verarbeiten der Trends
+# Funktion zum Verarbeiten der Trends und Sammeln der Daten
 def process_trends():
     trending_searches_df = pytrends.trending_searches(pn='germany')
     print("Top 25 Trends:")
     print(trending_searches_df.head(25))
+
+    # Liste zum Speichern der gesammelten Datensätze
+    records_to_add = []
 
     for trend in trending_searches_df[0:25].values:
         trend_name = trend[0]
@@ -110,15 +105,24 @@ def process_trends():
         # Abrufen des Suchvolumens
         search_volume = get_interest_over_time(trend_name)
 
-        if search_volume == "429":
-            continue  # Wenn ein 429-Fehler auftritt, wird nach der Pause weitergemacht
-        elif search_volume is not None:
-            add_to_airtable({"Trend": trend_name, "Suchvolumen": search_volume})
-        else:
+        if search_volume is None:
             print(f"Kein Suchvolumen für {trend_name} gefunden.")
+            continue
 
-        # Pause zwischen den Anfragen n
+        # Daten für den aktuellen Trend sammeln
+        record_data = {
+            "Trend": trend_name,
+            "Suchvolumen": search_volume
+        }
+
+        # Füge die Daten der Liste hinzu
+        records_to_add.append(record_data)
+
+        # Pause zwischen den Anfragen
         time.sleep(30)
+
+    # Nach dem Sammeln aller Daten werden sie in einem Rutsch zu Airtable hinzugefügt
+    batch_add_to_airtable(records_to_add)
 
 # Prozess zur Verarbeitung der Trends wird einmalig gestartet
 print("Starte den Prozess zur Verarbeitung der Trends...")
